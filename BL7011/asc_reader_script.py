@@ -7,6 +7,7 @@
 
 # Import packages
 import pandas as pd
+from io import StringIO
 
 def main():
     MARKER = '\n\n' # This string occurs between the different data sections
@@ -23,6 +24,8 @@ def main():
     runs = None
     temperature = None
     data_correlation = None
+    data_count_rate = None
+    data_instrument = None
 
     with open(path,
               mode='r',
@@ -31,49 +34,40 @@ def main():
         separated_data = (data_file.read()).split(MARKER)
         for idx, data_string in enumerate(separated_data):
             if 'Correlation' in data_string:
-                pass
+                # Remove the string '"Correlation"\n' from data_string
+                temp_string = data_string.replace('"Correlation"\n','')
 
+                # Read temp_string as a csv by using StringIO
+                data_correlation = pd.read_csv(StringIO(temp_string),
+                                               sep='\t',
+                                               lineterminator='\n',
+                                               usecols=[0,1],
+                                               names=['Tau [ms]',
+                                                      'Correlation'])
+            elif 'Count Rate' in data_string:
+                # Remove the string '"Count Rate"\n' from data_string
+                temp_string = data_string.replace('"Count Rate"\n', '')
 
-        """
-        for row_number, line in enumerate(data_file):
-            if row_number <= 28:
-                # Save the file header data, which only occurs before line 28
-                if 'Temperature' in line:
-                    temperature = float(line.split()[3])
-                elif 'Duration' in line:
-                    duration = float(line.split()[3])
-                elif 'FloatDur' in line:
-                    duration_float = float(line.split()[3])
-                elif 'Runs' in line:
-                    runs = int(line.split()[3])
-            else:
-                # Beyond line 28, look for the correlation/count data sets
-                if 'Correlation' in line:
-                    row_start_correlation = row_number
-                elif 'Count Rate' in line:
-                    row_start_counts = row_number
+                # Read temp_string as a csv by using StringIO
+                data_count_rate = pd.read_csv(StringIO(temp_string),
+                                              sep='\t',
+                                              lineterminator='\n',
+                                              usecols=[0, 1],
+                                              names=['Time [ms]',
+                                                     'Count rate [kHz]'])
 
-            if 'Temperature' in line:
-            print(line)
-            #if 'Correlation' in line:
-            """
+            elif 'ALV-7004/USB-FAST' in data_string:
+                # Remove the header string and any spaces
+                temp_string = data_string.replace('ALV-7004/USB-FAST\n', '')
+                temp_string = temp_string.replace(' ', '')
 
+                # Read temp_string as a csv by using StringIO
+                data_instrument = pd.read_csv(StringIO(temp_string),
+                                              sep=':\t',
+                                              lineterminator='\n',
+                                              names=['Parameter', 'Value'])
 
-
-    # Using np.loadtxt
-    # It seems like the data is encoded using ISO-8859-1
-
-    ascii_grid = np.loadtxt(path,
-                            encoding='ISO-8859-1',
-                            unpack=True)
-    print(path)
-    # Load the file and read the data
-    with open(path, mode='r') as f:
-        # Look for the
-        reader = csv.reader(f, delimiter='\t')
-        d = list(reader)
-
-    print(reader.shape)
+    pass
 
 
 
