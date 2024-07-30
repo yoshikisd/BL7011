@@ -21,17 +21,20 @@ from io import StringIO
 def get_all_file_names(
         path_dir: str,
         *,
+        extension: str = 'h5',
         search: str = '',
         verbose: bool = True,
 ) -> dict[int, str]:
     """
-    Gets all the names of files with an ".h5" extension in the directory
+    Gets all the names of files with a specific extension in the directory
     "path_dir" and stores the associated paths in a dictionary.
 
     PARAMETERS
     -----
     path_dir: str
-        The pathname of the directory (i.e., folder) which contains the h5 data
+        The pathname of the directory (i.e., folder) which contains the file
+    extension: str
+        Extension type of the files of interest (.h5 by default)
     search: str
         "search" is a string that the function will look for in the different
         file names. Specifying "search" will cause the function to only return
@@ -44,15 +47,15 @@ def get_all_file_names(
     RETURNS
     -----
     path_file: dict[int, str]
-        A dictionary containing path names of h5 files, sorted in descending
+        A dictionary containing path names of files, sorted in descending
         file name
     """
-    # Get a dictionary of ".h5" file path names
+    # Get a dictionary of file path names
     path_file = dict(
-        (index, path)  # Get both the h5 file path and index...
-        for index, path  # ... for all h5 file paths and indices...
-        in enumerate(sorted(glob(path_dir + '*.h5')))  # ... in the directory..
-        if search in path)  # ... if the h5 file has the phrase in "search"
+        (index, path)  # Get both the file path and index...
+        for index, path  # ... for all file paths and indices...
+        in enumerate(sorted(glob(path_dir + '*.' + extension)))  # ... in the directory..
+        if search in path)  # ... if the file has the phrase in "search"
 
     # Line-by-line, print out the collected base names (i.e., file name)
     # and associated indices if verbose is set to True
