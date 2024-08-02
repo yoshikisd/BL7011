@@ -112,7 +112,8 @@ def dict_to_df(
 def read_image_from_h5(
         dataset: h5py._hl.dataset.Dataset,
         index: int,
-        correction: str = ''
+        correction: str = '',
+        verbose: bool = False
 ) -> np.ndarray:
     """
     Reads CCD image(s) contained in a HDF5 dataset of interest with optional
@@ -134,6 +135,10 @@ def read_image_from_h5(
             - 'i0 rlrl' : Normalized by the XS111 RLRL diode (what is this?)
             - 'cps' : Normalize ccd image by acquisition time (counts per sec)
 
+    verbose: bool
+        Prints out the normalization factor and, if 'i0 rlrl' is selected,
+        prints the shape of the 'XS111RLRL_diode' key
+
     RETURNS
     -----
     ccd_image: np.ndarray
@@ -154,15 +159,18 @@ def read_image_from_h5(
     if 'i0 blade' in correction:  # Blade current i0 normalization
         norm_factor = h5_labview_db['XS111LeftBladecurrent_diode'][index]
     elif 'i0 rlrl' in correction:  # XS111 RLRL diode normalization
-        print(h5_labview_db['XS111RLRL_diode'].shape)
         norm_factor = np.abs(h5_labview_db['XS111RLRL_diode'][index])
-        print(norm_factor)
+        if verbose:
+            print(h5_labview_db['XS111RLRL_diode'].shape)
     elif 'cps' in correction:  # Convert intensity to counts-per-second
         norm_factor = h5_labview_db['count_time'][index] / 1000
     elif '' in correction:
         norm_factor = 1
     else:
         raise ValueError('An invalid correction method has been specified.')
+
+    if verbose:
+        print(norm_factor)
 
     # Normalize the image by either i0 or acquisition time
     return ccd_image / norm_factor
