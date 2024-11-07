@@ -264,3 +264,49 @@ def h5tree(h5filename: str, return_paths: bool = False) -> None:
         paths = sorted(paths)
 
         return paths
+
+
+def get_file_names(
+        path_dir: str,
+        *,
+        search: str = '',
+        verbose: bool = True,
+) -> dict[int, str]:
+    """
+    Gets all the names of files with an ".h5" extension in the directory
+    "path_dir" and stores the associated paths in a dictionary.
+
+    Parameters
+    -----
+    path_dir: str
+        The pathname of the directory (i.e., folder) which contains the h5 data
+    search: str
+        "search" is a string that the function will look for in the different
+        file names. Specifying "search" will cause the function to only return
+        those file names which contain the specified string.
+    verbose: bool
+        If set to True, the function will print out the names of each file
+        along  with its associated index in the dictionary. By default, this is
+        set to True.
+
+    RETURNS
+    -----
+    path_file: dict[int, str]
+        A dictionary containing path names of h5 files, sorted in descending
+        file name
+    """
+    # Get a dictionary of ".h5" file path names
+    path_file = dict(
+        (index, path)  # Get both the h5 file path and index...
+        for index, path  # ... for all h5 file paths and indices...
+        in enumerate(sorted(glob(path_dir + '*.h5')))  # ... in the directory..
+        if search in path)  # ... if the h5 file has the phrase in "search"
+
+    # Line-by-line, print out the collected base names (i.e., file name)
+    # and associated indices if verbose is set to True
+    if verbose:
+        print('Index \t File name')
+        for key in path_file.keys():
+            print(key, '\t', basename(path_file[key]))
+
+    return path_file
