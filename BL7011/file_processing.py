@@ -6,7 +6,6 @@
     Authors: Dayne Sasaki, Damian Günzing
 """
 import os.path
-
 import numpy as np
 from glob import glob
 from os.path import basename
@@ -105,7 +104,7 @@ def dict_to_df(
     return path_df
 
 
-def read_image_from_h5(
+def get_image_from_h5(
         dataset: h5py._hl.dataset.Dataset,
         index: int,
         correction: str = '',
@@ -175,7 +174,7 @@ def read_image_from_h5(
 def load_h5_image(
         path_file: str,
         correction: str = ''
-) -> np.ndarray:
+):
     """
     Reads the CCD image contained in a h5 file of interest
 
