@@ -113,7 +113,7 @@ def get_image_from_h5(
     """
     Reads CCD image(s) contained in a HDF5 dataset of interest with optional
     normalization of the image
-    
+
     PARAMETERS
     -----
     dataset: h5py._hl.dataset.Dataset
@@ -169,6 +169,113 @@ def get_image_from_h5(
 
     # Normalize the image by either i0 or acquisition time
     return ccd_image / norm_factor
+
+
+def store_h5_ccd_image(
+        path_file: str,
+        average_images: bool = True,
+        correction: str = None,
+        verbose: bool = False
+) -> np.ndarray:
+    """
+    Reads the CCD image(s) contained in a h5 file of interest and perform
+    optional pre-processing. This is a modified version of get_image_from_h5;
+    eventually I need to replace that function.
+
+    Depending on the chosen mode and number of images in the data set,
+    either a KxLxMxN or LxMxN sized numpy array will be returned, where
+    KxLxMxN corresponds with the dimensions of the data in the h5 file
+    and corresponds with the image dimension (MxN), number of experimental
+    states (K), and the number of images taken at each experimental state (L).
+
+    An experimental state refers to measurements taken with fixed experimental
+    parameters (e.g., temperature, motor positions, etc)
+
+    PARAMETERS
+    -----
+    path_file: str
+        The pathname of the h5 file
+
+    average_images: bool
+        Averages all the images taken for each experimental state (i.e.,
+        averages all "L" images taken for each "K")
+
+    correction: str
+        Type of intensity correction to perform on the CCD image 'ccd_image'
+            - None : Return the raw ccd image
+            - 'i0 blade' : Normalize ccd image by the right blade current
+            - 'i0 RLRL' : Normalized by the XS111 RLRL diode (what is this?)
+            - 'cps' : Normalize ccd image by acquisition time (counts per sec)
+
+    verbose: bool
+        Report the normalization values used
+
+    RETURNS
+    -----
+    ccd_image: np.ndarray
+        The CCD image, contained within an v x M x N array
+    """
+
+    # Open the h5 file of interest
+    with h5py.File(path_file, 'r') as h5_file:
+        # Define the h5 database with the ccd image stack and the labview data
+        h5_inst_db = h5_file['entry1']['instrument_1']
+        h5_ccd_db = h5_inst_db['detector_1']['data']
+        h5_labview_db = h5_inst_db['labview_data']
+
+        # Generate numpy array to store the CCD images
+        # First, get the shape of the data set
+        # For data_shape, we're assuming that it's structured so that
+        # data_shape[0] = K =# of experimental states
+        # data_shape[1] = L = # of images captured at each state
+        # data_shape[2,3] = MxN = Size of image frame
+        data_shape = h5_ccd_db.shape
+
+        # Depending on if average_image was selected, store the image set
+        if average_images:
+            # Make an empty array (don't load everything in h5_ccd_db to RAM)
+            im_ccd = np.empty([data_shape[0], data_shape[2], data_shape[3]])
+
+            # Loop over all the experimental states and average the images
+            for i in range(data_shape[0]):
+                im_ccd[i] = np.mean(h5_ccd_db[i], axis=0)
+
+        else:
+            # May the Lord have mercy on your RAM...
+            im_ccd = h5_ccd_db[:]
+
+        # Process the individual im_ccd images using corrections
+        if correction is not None:
+            for idx in range(data_shape[0]):
+                # Define norm_factor as a denominator term for normalization
+                norm_factor = 1  # No normalization
+                if 'i0 blade' in correction:  # Blade current i0 normalization
+                    i0_blade = np.abs(
+                        h5_labview_db['XS111LeftBladecurrent_diode'][idx])
+                    norm_factor *= i0_blade
+                    if verbose:
+                        print(f'XS111LeftBladecurrent_diode: {i0_blade}')
+
+                if 'i0 rlrl' in correction:  # XS111 RLRL diode normalization
+                    i0_rlrl = np.abs(
+                        h5_labview_db['XS111RLRL_diode'][idx])
+                    norm_factor *= i0_rlrl
+                    if verbose:
+                        print(f'XS111RLRL_diode: {i0_blade}')
+
+                if 'cps' in correction:  # Convert intensity to counts-per-second
+                    count_time = h5_inst_db['detector_1']['count_time'][()] / 1000
+                    norm_factor *= count_time
+                    if verbose:
+                        print(f'Count time: {count_time} seconds')
+
+                #if {'i0 blade', 'i0 rlrl', 'cps'}.isdisjoint(correction):
+                #    raise ValueError(
+                #        'An invalid correction method has been specified.')
+
+                im_ccd[idx] /= norm_factor
+
+    return im_ccd
 
 
 def load_h5_image(

@@ -172,10 +172,15 @@ def align_detector_images(im_ref: str,
                          'sizes.')
 
     # Calculate the pixel shift needed to align the two images
-    shift_translate = np.round((md_move['det_translate'] - md_ref['det_translate']) / md_ref['x_pixel_size'])
-    shift_tth = np.round((md_ref['detector_distance'] *
-                         (np.sin(md_move['detector_rotate']) - np.sin(md_ref['detector_rotate'])))
-                         / md_ref['x_pixel_size'])
+    d = md_ref['detector_distance']
+    tth_ref = md_ref['detector_rotate']
+    tth_move = md_move['detector_rotate']
+    pixel_size = md_ref['x_pixel_size']
+    trans_ref = md_ref['det_translate']
+    trans_move = md_move['det_translate']
+    shift_translate = np.round((trans_move - trans_ref) / pixel_size)
+    shift_tth = np.round((d * (np.sin(tth_move) - np.sin(tth_ref)))
+                         / (np.cos(tth_ref) * pixel_size))
 
     # Apply the shift to the image
     return ndi.shift(im_move, (shift_tth,shift_translate))
