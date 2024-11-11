@@ -10,7 +10,12 @@
 
     Authors: Dayne Sasaki
 """
+from typing import Tuple, Any
+
 import numpy as np
+from numpy import floating, half, ndarray, dtype
+from numpy._typing import _16Bit
+
 from BL7011 import file_processing as fp
 import h5py
 from scipy import ndimage as ndi
@@ -115,7 +120,7 @@ def calculate_dichroism_from_file(file_pol_a: str,
 def align_detector_images(im_ref: str,
                           im_move: str,
                           path_ref: str,
-                          path_move: str) -> np.ndarray:
+                          path_move: str) -> tuple[np.ndarray]:
     """
     Aligns pairs of detector images given their respective detector translate
      and 2theta values stored in the 'instrument_1' dataset of the original
@@ -143,13 +148,14 @@ def align_detector_images(im_ref: str,
 
         # Open up the h5 file and store the datasets in 'metadata'
         with h5py.File(path, 'r') as file:
-            # Create a variable for the parent group that the datasets are stored within
+            # Create a variable for the parent group that the datasets are
+            # stored within
             grp = file['entry1']['instrument_1']
-            metadata['det_translate'] = grp['labview_data']['det_translate'][0]
-            metadata['detector_rotate'] = grp['labview_data']['detector_rotate'][0]
-            metadata['detector_distance'] = grp['detector_1']['distance'][0]
-            metadata['x_pixel_size'] = grp['detector_1']['x_pixel_size'][0]
-            metadata['y_pixel_size'] = grp['detector_1']['y_pixel_size'][0]
+            metadata['det_translate'] = grp['labview_data']['det_translate'][0] * 1e-3
+            metadata['detector_rotate'] = np.deg2rad(grp['labview_data']['detector_rotate'][0])
+            metadata['detector_distance'] = grp['detector_1']['distance'][()]
+            metadata['x_pixel_size'] = grp['detector_1']['x_pixel_size'][()]
+            metadata['y_pixel_size'] = grp['detector_1']['y_pixel_size'][()]
 
         return metadata
 
@@ -164,8 +170,8 @@ def align_detector_images(im_ref: str,
 
     # Check that the parameters are consistent between the two images...
     # complain if they are not.
-    if not ((md_ref['detector_distance'] != md_move['detector_distance'])
-            or (md_ref['x_pixel_size'] != md_move['x_pixel_size'])):
+    if not ((md_ref['detector_distance'] == md_move['detector_distance'])
+            or (md_ref['x_pixel_size'] == md_move['x_pixel_size'])):
 
         raise ValueError('Alignment cannot be performed between images with'
                          'two different sample-detector distances or pixel '
@@ -178,9 +184,10 @@ def align_detector_images(im_ref: str,
     pixel_size = md_ref['x_pixel_size']
     trans_ref = md_ref['det_translate']
     trans_move = md_move['det_translate']
+
     shift_translate = np.round((trans_move - trans_ref) / pixel_size)
     shift_tth = np.round((d * (np.sin(tth_move) - np.sin(tth_ref)))
                          / (np.cos(tth_ref) * pixel_size))
 
     # Apply the shift to the image
-    return ndi.shift(im_move, (shift_tth,shift_translate))
+    return shift_tth, shift_translate
