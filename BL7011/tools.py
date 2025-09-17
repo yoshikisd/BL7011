@@ -1,5 +1,6 @@
 import json
 import numpy as np
+import torch as t
 import h5py
 import matplotlib.pyplot as plt
 import math
@@ -264,3 +265,34 @@ def h5tree(h5filename: str, return_paths: bool = False) -> None:
         paths = sorted(paths)
 
         return paths
+
+
+def mean_every_n_frames(patterns: t.Tensor, n: int) -> Optional[t.Tensor]:
+    """
+    Averages every n frames along the first dimension of a tensor.
+
+    Parameters
+    ----------
+    patterns : torch.Tensor
+        The input tensor with shape (frames, height, width) or (frames, width)
+    n : int
+        The number of frames to average.
+
+    Returns
+    -------
+    torch.Tensor or None
+        A tensor with averaged frames or None if frames not divisible by n.
+    """
+    patterns_subset = patterns[: patterns.shape[0] // n * n]
+    frames = patterns_subset.shape[0]
+
+    if frames % n != 0:
+        return None
+
+    if len(patterns_subset.shape) == 3:
+        frames, height, width = patterns_subset.shape
+        return patterns_subset.reshape(frames // n, n, height, width).mean(dim=1)
+    elif len(patterns_subset.shape) == 2:
+        frames, width = patterns_subset.shape
+        height = 1
+        return patterns_subset.reshape(frames // n, n, width, height).mean(dim=1)
